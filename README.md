@@ -1,3 +1,10 @@
+# Extending Arm memory model with support for NEON instructions
+
+This is ELEC6200 Group Design Project 19 - Extending Arm memory model with support for NEON instructions supervised by Thai Son Hoang.
+
+Original README
+===
+
 This is herdtools7, a tool suite to test weak memory models.
 
 We provide the following tools:
@@ -26,7 +33,6 @@ http://diy.inria.fr/
 diy-devel@inria.fr
 
 Compilation and installation
-============================
 
 See file [INSTALL.md](INSTALL.md).
 
@@ -65,3 +71,4 @@ en Automatique, and the authors.
 
 Diy7 is released under the terms of the CeCILL-B free software license agreement.
 See file [LICENSE.txt](LICENSE.txt).
+=======
