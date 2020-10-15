@@ -1,0 +1,8 @@
+image: registry.gitlab.com/bred1810/docker-herdtools
+
+build-tools:
+    script:
+        - make all D=ocb
+    only:
+        - merge_requests
+        - master
