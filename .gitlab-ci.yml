@@ -6,3 +6,10 @@ build-tools:
     only:
         - merge_requests
         - master
+
+test:
+    script:
+        - make test D=ocb
+    only:
+        - merge_requests
+        - master
