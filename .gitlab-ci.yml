@@ -1,15 +1,22 @@
 image: registry.gitlab.com/bred1810/docker-herdtools
 
+stages:
+    - build
+    - test
+
 build-tools:
+    stage: build
     script:
-        - make all D=ocb
+        - make all
     only:
         - merge_requests
         - master
 
 test:
+    stage: test
     script:
-        - make test D=ocb
+        - make test
+    needs: ["build-tools"]
     only:
         - merge_requests
         - master
