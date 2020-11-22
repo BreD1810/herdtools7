@@ -32,6 +32,7 @@ module Make
 let do_self = C.variant Variant_gen.Self
 let do_tag = C.variant Variant_gen.MemTag
 let do_morello = C.variant Variant_gen.Morello
+let do_neon = C.variant Variant_gen.Neon
 open Code
 open Printf
 
@@ -54,9 +55,10 @@ module Mixed =
 let bellatom = false
 type atom_rw =  PP | PL | AP | AL
 type atom_acc_opt = Capability
+type neon_sizes = N1 | N2 | N3 | N4
 type atom_acc = Plain of atom_acc_opt option | Acq of atom_acc_opt option
   | AcqPc of atom_acc_opt option | Rel of atom_acc_opt option
-  | Atomic of atom_rw | Tag | CapaTag | CapaSeal
+  | Atomic of atom_rw | Tag | CapaTag | CapaSeal | Neon of neon_sizes
 type atom = atom_acc * MachMixed.t option
 
 let default_atom = Atomic PP,None
@@ -83,6 +85,12 @@ let applies_atom (a,_) d = match a,d with
      | None -> ""
      | Some Capability -> "c"
 
+   let pp_neon_size = function
+     | N1 -> "1"
+     | N2 -> "2"
+     | N3 -> "3"
+     | N4 -> "4"
+
    let pp_atom_acc = function
      | Atomic rw -> sprintf "X%s" (pp_atom_rw rw)
      | Rel o -> sprintf "L%s" (pp_opt o)
@@ -92,6 +100,7 @@ let applies_atom (a,_) d = match a,d with
      | Tag -> "T"
      | CapaTag -> "Ct"
      | CapaSeal -> "Cs"
+     | Neon n -> sprintf "N%s" (pp_neon_size n)
 
    let pp_atom (a,m) = match a with
    | Plain o ->
@@ -129,9 +138,12 @@ let applies_atom (a,_) d = match a,d with
      if do_morello then fun f r -> f CapaSeal (f CapaTag r)
      else fun _f r -> r
 
+   let fold_neon f r = f N1 (f N2 (f N3 (f N4 r)))
+
    let fold_acc f r =
      fold_morello f (
      fold_tag f (
+     fold_neon (fun n -> f (Neon n)) (
      f (Plain (Some Capability)) (
      f (Acq (Some Capability)) (
      f (Acq None) (
@@ -139,8 +151,8 @@ let applies_atom (a,_) d = match a,d with
      f (AcqPc None) (
      f (Rel (Some Capability)) (
      f (Rel None) (
-     fold_atom_rw (fun rw -> f (Atomic rw)) r)
-     ))))))))
+     fold_atom_rw (fun rw -> f (Atomic rw)) r )
+     )))))))))
 
    let fold_non_mixed f r = fold_acc (fun acc r -> f (acc,None) r) r
 
@@ -154,7 +166,7 @@ let applies_atom (a,_) d = match a,d with
 
    let worth_final (a,_) = match a with
      | Atomic _ -> true
-     | Acq _|AcqPc _|Rel _|Plain _|Tag|CapaTag|CapaSeal -> false
+     | Acq _|AcqPc _|Rel _|Plain _|Tag|CapaTag|CapaSeal|Neon _ -> false
 
 
    let varatom_dir _d f r = f None r
@@ -176,7 +188,7 @@ let applies_atom (a,_) d = match a,d with
    | CapaTag,Some _ -> assert false
    | CapaSeal,None -> Code.CapaSeal
    | CapaSeal,Some _ -> assert false
-   | (Plain _|Acq _|AcqPc _|Rel _|Atomic (PP|PL|AP|AL)),_
+   | (Plain _|Acq _|AcqPc _|Rel _|Atomic (PP|PL|AP|AL)|Neon _),_
       -> Code.Ord
 
 (**************)
@@ -194,14 +206,14 @@ let applies_atom (a,_) d = match a,d with
        end)
 
 let overwrite_value v ao w = match ao with
-| None| Some ((Atomic _|Acq _|AcqPc _|Rel _|Plain _|Tag|CapaTag|CapaSeal),None)
+| None| Some ((Atomic _|Acq _|AcqPc _|Rel _|Plain _|Tag|CapaTag|CapaSeal|Neon _),None)
   -> w (* total overwrite *)
-| Some ((Atomic _|Acq _|AcqPc _|Rel _|Plain _|Tag|CapaTag|CapaSeal),Some (sz,o)) ->
+| Some ((Atomic _|Acq _|AcqPc _|Rel _|Plain _|Tag|CapaTag|CapaSeal|Neon _),Some (sz,o)) ->
     ValsMixed.overwrite_value v sz o w
 
  let extract_value v ao = match ao with
-  | None| Some ((Atomic _|Acq _|AcqPc _|Rel _|Plain _|Tag|CapaTag|CapaSeal),None) -> v
-  | Some ((Atomic _|Acq _|AcqPc _|Rel _|Plain _|Tag|CapaTag|CapaSeal),Some (sz,o)) ->
+  | None| Some ((Atomic _|Acq _|AcqPc _|Rel _|Plain _|Tag|CapaTag|CapaSeal|Neon _),None) -> v
+  | Some ((Atomic _|Acq _|AcqPc _|Rel _|Plain _|Tag|CapaTag|CapaSeal|Neon _),Some (sz,o)) ->
       ValsMixed.extract_value v sz o
 
 (* End of atoms *)

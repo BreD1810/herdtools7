@@ -30,6 +30,8 @@ type t =
   | NoVolatile
 (* Morello C64 instruction set *)
   | Morello
+(* Neon AArch64 extension *)
+  | Neon
 
 val tags : string list
 

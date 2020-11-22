@@ -30,6 +30,8 @@ type t =
   | NoVolatile
 (* Morello C64 instruction set *)
   | Morello
+(* Neon AArch64 extension *)
+  | Neon
 
 let tags =
  ["AsAmo";"ConstsInInit";"Mixed";"FullMixed";"Self"; "MemTag";
@@ -44,6 +46,7 @@ let parse tag = match Misc.lowercase tag with
 | "memtag" -> Some MemTag
 | "novolatile" -> Some NoVolatile
 | "morello" -> Some Morello
+| "neon" -> Some Neon
 | _ -> None
 
 let pp = function
@@ -55,3 +58,4 @@ let pp = function
   | MemTag -> "MemTag"
   | NoVolatile -> "NoVolatile"
   | Morello -> "Morello"
+  | Neon -> "Neon"
