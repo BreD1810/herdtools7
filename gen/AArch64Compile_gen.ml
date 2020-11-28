@@ -145,11 +145,11 @@ module Make(Cfg:Config) : XXXCompile_gen.S =
     let sxtw r1 r2 = I_SXTW (r1,r2)
     let do_ldr_idx v r1 r2 idx = I_LDR (v,r1,r2,RV (vloc,idx), S_NOEXT)
     let ldr_idx = do_ldr_idx vloc
-    let ldn n r1 r2 = match n with
-    | N1 -> I_LD1M ([r1],r2,K 0)
-    | N2 -> I_LD2M ([r1],r2,K 0)
-    | N3 -> I_LD3M ([r1],r2,K 0)
-    | N4 -> I_LD4M ([r1],r2,K 0)
+    let ldn n rs rt = match n with
+    | N1 -> I_LD1M (rs,rt,K 0)
+    | N2 -> I_LD2M (rs,rt,K 0)
+    | N3 -> I_LD3M (rs,rt,K 0)
+    | N4 -> I_LD4M (rs,rt,K 0)
 
 
     let ldr_mixed_idx v r1 r2 idx sz  =
@@ -179,11 +179,11 @@ module Make(Cfg:Config) : XXXCompile_gen.S =
     let str_idx = do_str_idx vloc
     let stxr r1 r2 r3 = I_STXR (vloc,YY,r1,r2,r3)
     let stlxr r1 r2 r3 = I_STXR (vloc,LY,r1,r2,r3)
-    let stn n r1 r2 = match n with
-    | N1 -> I_ST1M ([r1],r2,K 0)
-    | N2 -> I_ST2M ([r1],r2,K 0)
-    | N3 -> I_ST3M ([r1],r2,K 0)
-    | N4 -> I_ST4M ([r1],r2,K 0)
+    let stn n rs rt = match n with
+    | N1 -> I_ST1M (rs,rt,K 0)
+    | N2 -> I_ST2M (rs,rt,K 0)
+    | N3 -> I_ST3M (rs,rt,K 0)
+    | N4 -> I_ST4M (rs,rt,K 0)
 
     let stxr_sz t sz r1 r2 r3 =
       let open MachSize in
@@ -430,10 +430,19 @@ module Make(Cfg:Config) : XXXCompile_gen.S =
         end)
 
     module LDN = struct
+
+      let emit_vregs n st =
+        let rec get_reg_list n rs st = match n with
+        | N1 -> let r,st = next_vreg st in (rs@[r]),st
+        | N2 -> let r,st = next_vreg st in get_reg_list N1 (rs@[r]) st
+        | N3 -> let r,st = next_vreg st in get_reg_list N2 (rs@[r]) st
+        | N4 -> let r,st = next_vreg st in get_reg_list N3 (rs@[r]) st
+        in get_reg_list n [] st
+
       let emit_load n st p init x =
-        let rA,st = next_vreg st in
+        let rs,st = emit_vregs n st in
         let rB,init,st = U.next_init st p init x in
-        rA,init,lift_code [ldn n rA rB],st
+        (List.hd rs),init,lift_code [ldn n rs rB],st
     end
 
     module LDG = struct
@@ -593,14 +602,25 @@ module Make(Cfg:Config) : XXXCompile_gen.S =
         end)
 
     module STN = struct
-      let emit_store_reg n st p init x rA =
+      let emit_store_reg n st p init x rs =
         let rB,init,st = U.next_init st p init x in
-        init,pseudo [stn n rA rB],st
+        init,pseudo [stn n rs rB],st
+
+      let emit_vregs n st =
+        let rec get_reg_list n rs st = match n with
+        | N1 -> let r,st = next_vreg st in (rs@[r]),st
+        | N2 -> let r,st = next_vreg st in get_reg_list N1 (rs@[r]) st
+        | N3 -> let r,st = next_vreg st in get_reg_list N2 (rs@[r]) st
+        | N4 -> let r,st = next_vreg st in get_reg_list N3 (rs@[r]) st
+        in get_reg_list n [] st
+
+      let emit_movis rs = List.map (fun r -> movi_reg r) rs
 
       let emit_store n st p init x =
-        let rA,st = next_vreg st in
-        let init,cs,st = emit_store_reg n st p init x rA in
-        init,pseudo [movi_reg rA]@cs,st
+        let rs,st = emit_vregs n st in
+        let mvs = emit_movis rs in
+        let init,cs,st = emit_store_reg n st p init x rs in
+        init,pseudo mvs@cs,st
     end
 
     module STG = struct
