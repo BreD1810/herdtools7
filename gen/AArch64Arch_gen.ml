@@ -364,7 +364,9 @@ include
 
       let pp_reg = pp_reg
       let free_registers = allowed_for_symb
-      include NoSpecial
+
+      type special = reg
+      let specials = vregs
     end)
 
 end
