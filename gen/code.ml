@@ -125,13 +125,14 @@ type info = (string * string) list
 let plain = "Na"
 
 (* Memory Space *)
-type bank = Ord | Tag | CapaTag | CapaSeal
+type bank = Ord | Tag | CapaTag | CapaSeal | VecReg
 
 let pp_bank = function
   | Ord -> "Ord"
   | Tag -> "Tag"
   | CapaTag -> "CapaTag"
   | CapaSeal -> "CapaSeal"
+  | VecReg -> "VecReg"
 
 let tag_of_int  = function
   | 0 -> "green"
@@ -147,3 +148,5 @@ let tag_of_int  = function
 let add_tag s t = Printf.sprintf "%s:%s" s (tag_of_int t)
 
 let add_capability s t = Printf.sprintf "0xffffc0000:%s:%i" s (if t = 0 then 1 else 0)
+
+let add_vector v = Printf.sprintf "{%i,%i,%i,%i}" v v v v

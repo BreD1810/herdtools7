@@ -188,7 +188,9 @@ let applies_atom (a,_) d = match a,d with
    | CapaTag,Some _ -> assert false
    | CapaSeal,None -> Code.CapaSeal
    | CapaSeal,Some _ -> assert false
-   | (Plain _|Acq _|AcqPc _|Rel _|Atomic (PP|PL|AP|AL)|Neon _),_
+   | Neon _,Some _ -> assert false
+   | Neon _,None -> Code.VecReg
+   | (Plain _|Acq _|AcqPc _|Rel _|Atomic (PP|PL|AP|AL)),_
       -> Code.Ord
 
 (**************)

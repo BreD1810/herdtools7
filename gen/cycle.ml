@@ -25,6 +25,7 @@ module type S = sig
   type event =
       { loc : loc ; ord : int; tag : int;
         ctag : int; cseal : int; dep : int;
+        vecreg: int;
         v   : v ;
         dir : dir option ;
         proc : Code.proc ;
@@ -110,6 +111,7 @@ module Make (O:Config) (E:Edge.S) :
   let dbg = false
   let do_memtag = O.variant Variant_gen.MemTag
   let do_morello = O.variant Variant_gen.Morello
+  let do_neon = O.variant Variant_gen.Neon
   type fence = E.fence
   type edge = E.edge
   type atom = E.atom
@@ -117,6 +119,7 @@ module Make (O:Config) (E:Edge.S) :
   type event =
       { loc : loc ; ord : int; tag : int;
         ctag : int; cseal : int; dep : int;
+        vecreg: int;
         v   : v ;
         dir : dir option ;
         proc : Code.proc ;
@@ -129,6 +132,7 @@ module Make (O:Config) (E:Edge.S) :
   let evt_null =
     { loc=Code.loc_none ; ord=0; tag=0;
       ctag=0; cseal=0; dep=0;
+      vecreg=0;
       v=(-1) ; dir=None; proc=(-1); atom=None; rmw=false;
       cell=(-1); bank=Code.Ord; idx=(-1); }
 
@@ -168,19 +172,24 @@ module Make (O:Config) (E:Edge.S) :
       sprintf " (ord=%i) (ctag=%i) (cseal=%i) (dep=%i)" e.ord e.ctag e.cseal e.dep
     else fun _ -> ""
 
+  let debug_neon =
+    if do_neon then fun e ->
+      sprintf " (vecreg=%i)" e.vecreg
+    else fun _ -> ""
+
   let debug_evt e =
     if O.hexa then
-      sprintf "%s%s %s 0x%x%s%s"
+      sprintf "%s%s %s 0x%x%s%s%s"
         (debug_dir e.dir)
         (debug_atom e.atom)
         (Code.pp_loc e.loc)
-        e.v (debug_tag e) (debug_morello e)
+        e.v (debug_tag e) (debug_morello e) (debug_neon e)
     else
-      sprintf "%s%s %s %i%s%s"
+      sprintf "%s%s %s %i%s%s%s"
         (debug_dir e.dir)
         (debug_atom e.atom)
         (Code.pp_loc e.loc) e.v
-        (debug_tag e) (debug_morello e)
+        (debug_tag e) (debug_morello e) (debug_neon e)
 
   let debug_edge = E.pp_edge
 
@@ -361,8 +370,8 @@ let diff_proc e = E.get_ie e = Ext
 (* Coherence definition *)
 module CoSt = MyMap.Make(struct type t = Code.bank let compare = compare end)
 
-let co_st_0  = CoSt.add Ord 0 (CoSt.add Tag 0 (CoSt.add CapaTag 0 (CoSt.add CapaSeal 0 CoSt.empty)))
-let co_st_1  = CoSt.add Ord 1 (CoSt.add Tag 1 (CoSt.add CapaTag 1 (CoSt.add CapaSeal 1 CoSt.empty)))
+let co_st_0  = CoSt.add Ord 0 (CoSt.add Tag 0 (CoSt.add CapaTag 0 (CoSt.add CapaSeal 0 (CoSt.add VecReg 0 CoSt.empty))))
+let co_st_1  = CoSt.add Ord 1 (CoSt.add Tag 1 (CoSt.add CapaTag 1 (CoSt.add CapaSeal 1 (CoSt.add VecReg 1 CoSt.empty))))
 let start_co _ = co_st_1
 
 let get_co st bank =
@@ -598,6 +607,9 @@ let set_same_loc st n0 =
             let ctag = get_co old CapaTag in
             let cseal = get_co old CapaSeal in
             n.evt <- { n.evt with ord=ord; ctag=ctag; cseal=cseal; }
+          else if do_neon then
+            let vecreg = get_co old VecReg in
+            n.evt <- { n.evt with vecreg=vecreg; }
           end
         end ;
         begin match n.evt.dir with
@@ -615,7 +627,7 @@ let set_same_loc st n0 =
                     do_set_write_val
                       (set_co old bank n.evt.cell)
                       (if E.is_node n.edge.E.edge then next else next_co next Ord) ns
-                | Tag | CapaTag | CapaSeal ->
+                | Tag | CapaTag | CapaSeal | VecReg ->
                     let v = get_co next bank in
                     n.evt <- { n.evt with v = v; } ;
                     do_set_write_val (set_co old bank v)
@@ -698,7 +710,7 @@ let do_set_read_v =
             let st = set_co st n.evt.bank n.evt.v in
             do_rec st
               (match n.evt.bank with | Ord -> n.evt.cell | Tag | CapaTag
-                | CapaSeal -> cell)
+                | CapaSeal | VecReg -> cell)
               ns
         | None | Some J ->
             do_rec st cell ns
