@@ -512,7 +512,7 @@ let max_set = IntSet.max_elt
           let r,i,c,st = Comp.emit_obs CapaSeal st p i x in
           i,code@c,F.add_final_loc p r (Code.add_capability x v) f,st
       | Data x,VecReg ->
-          let v = lst.C.next.C.evt.C.v in
+          let v = lst.C.next.C.evt.C.vecreg in
           let r,i,c,st = Comp.emit_obs VecReg st p i x in
           i,code@c,F.add_final_loc p r (Code.add_vector v) f,st
       | Code _,_ -> i,code,f,st
