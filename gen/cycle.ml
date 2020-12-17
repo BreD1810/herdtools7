@@ -608,9 +608,10 @@ let set_same_loc st n0 =
             let cseal = get_co old CapaSeal in
             n.evt <- { n.evt with ord=ord; ctag=ctag; cseal=cseal; }
           else if do_neon then
+            let ord = get_co old Ord in
             let v = get_co old VecReg in
             let vecreg = [|v;v;v;v;|] in
-            n.evt <- { n.evt with vecreg=vecreg; }
+            n.evt <- { n.evt with ord=ord; vecreg=vecreg; }
           end
         end ;
         begin match n.evt.dir with
@@ -628,10 +629,17 @@ let set_same_loc st n0 =
                     do_set_write_val
                       (set_co old bank n.evt.cell)
                       (if E.is_node n.edge.E.edge then next else next_co next Ord) ns
-                | Tag | CapaTag | CapaSeal | VecReg ->
+                | Tag | CapaTag | CapaSeal ->
                     let v = get_co next bank in
                     n.evt <- { n.evt with v = v; } ;
                     do_set_write_val (set_co old bank v)
+                      (next_co next bank) ns
+                | VecReg ->
+                    let v = get_co next bank in
+                    n.evt <- { n.evt with v = v; } ;
+                    set_cell n (get_co old Ord) ;
+                    do_set_write_val
+                      (set_co old bank v)
                       (next_co next bank) ns
                 end
             | Code _ ->
@@ -961,7 +969,7 @@ let rec group_rec x ns = function
       | Some W ->
           if
             E.is_node m.edge.E.edge ||
-            m.evt.bank <> Code.Ord
+            (m.evt.bank <> Code.Ord && m.evt.bank <> Code.VecReg)
           then k else (e.loc,m)::k
       | None| Some R | Some J -> k in
       k in
