@@ -148,3 +148,8 @@ test::
 		-variant mixed \
 		$(REGRESSION_TEST_MODE)
 	@ echo "herd7 AArch64-MTE-mixed catalogue tests: OK"
+
+test::
+	@ echo
+	./litmus-tests.sh
+	@ echo "litmus7 AArch64 builds: OK"
